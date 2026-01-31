@@ -1,5 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
+from uuid import UUID
+from datetime import datetime
 
 class UserCreate(BaseModel):
     username: str
@@ -8,9 +10,10 @@ class UserCreate(BaseModel):
     preferences: List[str]
 
 class UserResponse(BaseModel):
-    id: int
+    id: UUID
     username: str
     email: str
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -25,11 +28,11 @@ class LoginResponse(BaseModel):
     message: str
 
 class PaintingResponse(BaseModel):
-    id: int
+    id: UUID
     title: str
     artist: Optional[str] = None
     image_url: str
-    style: Optional[str]
+    style: Optional[str] = None
 
     class Config:
         from_attributes = True

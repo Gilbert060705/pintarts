@@ -14,6 +14,7 @@ def create_user(db: Session, user: UserCreate):
     query = text("""
         INSERT INTO users (username, email, hashed_password, taste_vector)
         VALUES (:username, :email, :hashed_password, :taste_vector)
+        RETURNING id, username, email, created_at
     """)
     
     result = db.execute(
@@ -52,7 +53,7 @@ def get_eligible_users(db: Session):
 def get_recommmendations_for_user(db: Session, user_id: str, limit: int = 10):
 
     user_query = text("""
-        SELECT taste_vector
+        SELECT taste_vector::text
                       from users
                       where id= :user_id
     """)
@@ -62,34 +63,49 @@ def get_recommmendations_for_user(db: Session, user_id: str, limit: int = 10):
     if not user_result or not user_result[0]:
         return []
     
-    user_vector = user_result.taste_vector
+    # pgvector returns the vector as a string like '[1.0,2.0,3.0]'
+    # We can use it directly
+    vector_str = user_result[0]
 
     recommendation_query = text("""
         SELECT id, title, artist, image_url, style
-                                FROM paintings
-                                ORDER BY embedding <=> :vector::vector
-                                LIMIT :limit
-                                """)
+        FROM paintings
+        ORDER BY embedding <=> CAST(:vector_str AS vector)
+        LIMIT :limit
+    """)
     
     results = db.execute(
         recommendation_query,
-        {"vector": user_vector, "limit": limit}
+        {"vector_str": vector_str, "limit": limit}
     )
 
     return [dict(row._mapping) for row in results]
 
 def search_paintings_by_description(db: Session, search_query: str, limit: int = 10):
     query_vector = get_text_embedding(search_query)
+    
+    # Flatten vector if it's nested and convert to list
+    if hasattr(query_vector, 'tolist'):
+        # If it's a numpy array
+        query_vector = query_vector.tolist()
+    
+    # Ensure it's a flat list
+    if isinstance(query_vector, list) and len(query_vector) > 0 and isinstance(query_vector[0], list):
+        query_vector = query_vector[0]
+    
+    # Convert vector to string format for PostgreSQL
+    vector_str = '[' + ','.join(map(str, query_vector)) + ']'
+    
     query = text("""
     SELECT id, title, artist, image_url, style
                  FROM paintings
-                 ORDER BY embedding <=> :vector::vector
+                 ORDER BY embedding <=> CAST(:vector_str AS vector)
                  LIMIT :limit
                  """)
     
     results = db.execute(
         query, 
-        {"vector": query_vector, "limit": limit}
+        {"vector_str": vector_str, "limit": limit}
     )
 
     return [dict(row._mapping) for row in results]
@@ -97,28 +113,38 @@ def search_paintings_by_description(db: Session, search_query: str, limit: int =
 def create_user_blend(db: Session, user_1_id: uuid.UUID, user_2_id: uuid.UUID):
     query = text(
         """
-        SELECT id, taste_vector FROM users WHERE id IN (:u1, :u2)
+        SELECT id, taste_vector::text FROM users WHERE id IN (:u1, :u2)
         """
     )
     users = db.execute(query, {"u1": user_1_id, "u2": user_2_id}).fetchall()
     if len(users) < 2:
         return None
     
-    v1 = users[0].taste_vector
-    v2 = users[1].taste_vector
+    # Parse vector strings like '[1.0,2.0,3.0]' to lists of floats
+    v1_str = users[0][1]  # taste_vector as text
+    v2_str = users[1][1]
+    
+    # Remove brackets and split by comma, then convert to float
+    v1 = [float(x) for x in v1_str.strip('[]').split(',')]
+    v2 = [float(x) for x in v2_str.strip('[]').split(',')]
 
+    # Calculate average of two vectors
     blend_vector = [(a + b)/2 for a, b in zip(v1, v2)]
+    
+    # Convert back to PostgreSQL vector format
+    blend_vector_str = '[' + ','.join(map(str, blend_vector)) + ']'
+    
     query = text(
         """
         INSERT INTO blends(first_user, second_user, blend_vector)
-        VALUES (:u1, :u2, :v::vector)
+        VALUES (:u1, :u2, CAST(:v AS vector))
         ON CONFLICT(first_user, second_user) DO UPDATE SET blend_vector = EXCLUDED.blend_vector
         RETURNING blend_id
     """
     )
     result = db.execute(
         query, 
-        {"u1": user_1_id, "u2": user_2_id, "v": blend_vector}
+        {"u1": user_1_id, "u2": user_2_id, "v": blend_vector_str}
     )
     db.commit()
     return result.fetchone()[0]
@@ -140,22 +166,29 @@ def get_blend_recommendations(db: Session, blend_id: uuid.UUID, limit: int = 10)
 
     query = text(
         """
-        SELECT blend_vector from blends where blend_id = :bid
+        SELECT blend_vector::text from blends where blend_id = :bid
     """
     )
 
-    blend_vector = db.execute(query, {"bid": blend_id}).fetchone()
+    blend_result = db.execute(query, {"bid": blend_id}).fetchone()
+    
+    if not blend_result or not blend_result[0]:
+        return []
+    
+    # Get the vector string directly
+    vector_str = blend_result[0]
+    
     query = text(
         """
         SELECT id, title, artist, image_url, style
         FROM paintings
-        ORDER BY embedding <=> :vector::vector
+        ORDER BY embedding <=> CAST(:vector_str AS vector)
         LIMIT :limit
     """
     )
     results = db.execute(
         query,
-        {"vector": blend_vector, "limit": limit}
+        {"vector_str": vector_str, "limit": limit}
     )
     return [dict(row._mapping) for row in results]
 
