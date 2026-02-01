@@ -1,4 +1,4 @@
-# PINTUPS - AI-Powered Art Recommendation System
+# PINTARTS - AI-Powered Art Recommendation System
 
 **PINTUPS** is an innovative art recommendation platform that combines vector-based similarity search with social features to help users discover artwork tailored to their unique tastes. Built for the PINUS Hackathon, the system leverages AI embeddings and collaborative filtering to create personalized art experiences.
 
