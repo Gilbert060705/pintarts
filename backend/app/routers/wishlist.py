@@ -26,3 +26,19 @@ def get_wishlist(user_id: str = Query(..., description="User ID"), db: Session =
         return paintings
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/", response_model=schemas.WishlistResponse)
+def remove_from_wishlist(wishlist: schemas.WishlistAdd, db: Session = Depends(get_db)):
+    """Remove a painting from user's wishlist"""
+    try:
+        removed = crud.remove_from_wishlist(db, wishlist.user_id, wishlist.painting_id)
+        if not removed:
+            raise HTTPException(status_code=404, detail="Painting not found in wishlist")
+        return schemas.WishlistResponse(
+            success=True,
+            message="Painting removed from wishlist"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

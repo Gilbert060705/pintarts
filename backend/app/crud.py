@@ -235,6 +235,19 @@ def add_to_wishlist(db: Session, user_id: str, painting_id: str):
     db.commit()
     return True
 
+def remove_from_wishlist(db: Session, user_id: str, painting_id: str):
+    """Remove a painting from user's wishlist"""
+    query = text("""
+        DELETE FROM wishlists
+        WHERE user_id = :user_id AND painting_id = :painting_id
+    """)
+    
+    result = db.execute(query, {"user_id": user_id, "painting_id": painting_id})
+    db.commit()
+    
+    # Return True if a row was deleted, False otherwise
+    return result.rowcount > 0
+
 def get_user_wishlist(db: Session, user_id: str):
     """Get all paintings in user's wishlist"""
     query = text("""
