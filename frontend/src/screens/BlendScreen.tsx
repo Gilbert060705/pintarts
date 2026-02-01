@@ -3,26 +3,47 @@ import {
   View,
   Text,
   ScrollView,
-  Image,
   TouchableOpacity,
   StatusBar,
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles';
-import { usersService, blendService, UserListItem } from '../api';
+import { usersService, blendService, UserListItem, Painting } from '../api';
 import { userStorage } from '../utils/storage';
+import { RootStackParamList, Artwork } from '../types/navigation';
+import BlendResultsSheet from '../components/BlendResultsSheet';
+
+type BlendNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// Convert API Painting to Artwork
+const paintingToArtwork = (painting: Painting): Artwork => ({
+  id: painting.id,
+  title: painting.title,
+  artist: painting.artist || 'Unknown Artist',
+  imageUrl: painting.image_url,
+  category: painting.style || 'Art',
+  description: painting.description || '',
+  isWishlisted: painting.is_wishlisted,
+});
 
 export default function BlendScreen() {
+  const navigation = useNavigation<BlendNavigationProp>();
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [creatingBlendWith, setCreatingBlendWith] = useState<string | null>(null);
+  
+  // Blend results
+  const [blendResults, setBlendResults] = useState<Artwork[]>([]);
+  const [blendPartnerName, setBlendPartnerName] = useState('');
+  const [showBlendResults, setShowBlendResults] = useState(false);
 
   // Load user ID on mount
   useEffect(() => {
@@ -71,22 +92,30 @@ export default function BlendScreen() {
     if (!userId) return;
 
     setCreatingBlendWith(friendId);
+    setBlendPartnerName(friendName);
 
     try {
-      const response = await blendService.createBlend(userId, friendId);
-      Alert.alert(
-        'Blend Created! 🎨',
-        `Your art blend with ${friendName} is ready! Check your recommendations.`,
-        [{ text: 'OK' }]
-      );
-      console.log('✅ Blend created:', response.blend_id);
+      // Create blend and get recommendations in one call
+      const paintings = await blendService.createBlend(userId, friendId, userId);
+      const artworks = paintings.map(paintingToArtwork);
+      
+      console.log('✅ Blend created with', friendName, '-', artworks.length, 'recommendations');
+      
+      // Show results in bottom sheet
+      setBlendResults(artworks);
+      setShowBlendResults(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create blend';
-      Alert.alert('Error', message);
       console.error('Failed to create blend:', err);
+      setError(message);
     } finally {
       setCreatingBlendWith(null);
     }
+  };
+
+  const handleArtworkPress = (artwork: Artwork) => {
+    setShowBlendResults(false);
+    navigation.navigate('ArtDetail', { artwork });
   };
 
   const renderContent = () => {
@@ -136,11 +165,11 @@ export default function BlendScreen() {
         
         {users.map((user) => (
           <TouchableOpacity
-            key={user.id}
+            key={user.username}
             activeOpacity={0.8}
             style={styles.friendItem}
-            onPress={() => handleBlend(user.id, user.username)}
-            disabled={creatingBlendWith === user.id}
+            onPress={() => handleBlend(user.username, user.username)}
+            disabled={creatingBlendWith === user.username}
           >
             <View style={styles.avatarPlaceholder}>
               <Text style={styles.avatarText}>
@@ -160,9 +189,9 @@ export default function BlendScreen() {
             </View>
             <View style={[
               styles.blendButton,
-              creatingBlendWith === user.id && styles.blendButtonDisabled
+              creatingBlendWith === user.username && styles.blendButtonDisabled
             ]}>
-              {creatingBlendWith === user.id ? (
+              {creatingBlendWith === user.username ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={styles.blendButtonText}>Blend</Text>
@@ -220,6 +249,15 @@ export default function BlendScreen() {
 
         {renderContent()}
       </ScrollView>
+
+      {/* Blend Results Bottom Sheet */}
+      <BlendResultsSheet
+        visible={showBlendResults}
+        onClose={() => setShowBlendResults(false)}
+        artworks={blendResults}
+        partnerName={blendPartnerName}
+        onArtworkPress={handleArtworkPress}
+      />
     </View>
   );
 }
