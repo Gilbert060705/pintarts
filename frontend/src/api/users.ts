@@ -3,6 +3,7 @@ import { Painting } from './recommend';
 
 // Types matching backend schemas
 export interface UserListItem {
+  user_id: string;
   username: string;
   email: string;
   similarity?: number;

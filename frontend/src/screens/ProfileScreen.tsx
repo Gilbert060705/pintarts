@@ -33,24 +33,7 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>Art Collector</Text>
           <Text style={styles.userEmail}>collector@pintarts.com</Text>
         </View>
-
-        {/* Art Preferences */}
-        <View style={styles.preferencesSection}>
-          <View style={styles.preferencesHeader}>
-            <Text style={styles.sectionTitle}>Art Preferences</Text>
-            <TouchableOpacity activeOpacity={0.8}>
-              <Text style={styles.editText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.tagsRow}>
-            {['Abstract', 'Modern', 'Digital'].map((style) => (
-              <View key={style} style={styles.tag}>
-                <Text style={styles.tagText}>{style}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+       
 
         {/* Divider */}
         <View style={styles.divider} />

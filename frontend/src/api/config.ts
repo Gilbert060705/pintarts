@@ -7,7 +7,7 @@ export const API_BASE_URL = __DEV__
 export const API_ENDPOINTS = {
   // Users
   LOGIN: '/users/login',
-  REGISTER: '/users/',
+  REGISTER: '/users',
   
   // Wishlist
   WISHLIST: '/wishlist',

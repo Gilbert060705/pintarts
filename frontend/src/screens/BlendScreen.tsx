@@ -163,13 +163,13 @@ export default function BlendScreen() {
       <View style={styles.friendsSection}>
         <Text style={styles.friendsTitle}>Other Users</Text>
         
-        {users.map((user) => (
+        {users.map((user, index) => (
           <TouchableOpacity
-            key={user.username}
+            key={user.user_id || user.username || `user-${index}`}
             activeOpacity={0.8}
             style={styles.friendItem}
-            onPress={() => handleBlend(user.username, user.username)}
-            disabled={creatingBlendWith === user.username}
+            onPress={() => handleBlend(user.user_id, user.username)}
+            disabled={creatingBlendWith === user.user_id}
           >
             <View style={styles.avatarPlaceholder}>
               <Text style={styles.avatarText}>
@@ -182,16 +182,16 @@ export default function BlendScreen() {
                 <View style={styles.matchRow}>
                   <Ionicons name="sparkles" size={12} color={colors.primary} />
                   <Text style={styles.matchText}>
-                    {Math.round(user.similarity * 100)}% taste match
+                    {Math.round(user.similarity)}% taste match
                   </Text>
                 </View>
               )}
             </View>
             <View style={[
               styles.blendButton,
-              creatingBlendWith === user.username && styles.blendButtonDisabled
+              creatingBlendWith === user.user_id && styles.blendButtonDisabled
             ]}>
-              {creatingBlendWith === user.username ? (
+              {creatingBlendWith === user.user_id ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={styles.blendButtonText}>Blend</Text>
