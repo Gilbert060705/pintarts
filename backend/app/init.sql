@@ -34,12 +34,4 @@ CREATE TABLE IF NOT EXISTS ownerships(
     PRIMARY KEY (user_id, painting_id)
 );
 
-CREATE TABLE IF NOT EXISTS blends(
-    blend_id UUID DEFAULT gen_random_uuid(), 
-    first_user UUID references users(id) ON DELETE CASCADE, 
-    second_user UUID references users(id) ON DELETE CASCADE, 
-    blend_vector vector(512), 
-    PRIMARY KEY (first_user, second_user)
-);
-
 CREATE INDEX IF NOT EXISTS paintings_embedding_idx ON paintings USING hnsw (embedding vector_cosine_ops);

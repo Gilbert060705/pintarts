@@ -26,8 +26,16 @@ def get_blend_recommendations(
     return paintings
 
 @router.post("", response_model=List[schemas.PaintingResponse])
-def create_blend(user_1_id: uuid.UUID, user_2_id: uuid.UUID, db: Session = Depends(get_db)):
-    blend_id = crud.create_user_blend(db, user_1_id, user_2_id)
-    if blend_id is None:
+def create_blend(
+    user_1_id: uuid.UUID, 
+    user_2_id: uuid.UUID, 
+    user_id: Optional[str] = Query(None, description="User ID to check wishlist status"),
+    db: Session = Depends(get_db)
+):
+    """Create blend of two users and return top 10 recommended paintings without saving to database"""
+    paintings = crud.get_instant_blend_recommendations(db, user_1_id, user_2_id, user_id, limit=10)
+    if paintings is None:
         raise HTTPException(status_code=400, detail="Could not create blend. One or both users may not exist.")
-    return {"success": True, "message": "Blend created successfully", "blend_id": str(blend_id)}
+    if not paintings:
+        raise HTTPException(status_code=404, detail="No recommendations available for this blend")
+    return paintings

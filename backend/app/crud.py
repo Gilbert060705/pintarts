@@ -158,6 +158,62 @@ def search_paintings_by_description(db: Session, search_query: str, user_id: str
 
     return [dict(row._mapping) for row in results]
 
+def get_instant_blend_recommendations(db: Session, user_1_id: uuid.UUID, user_2_id: uuid.UUID, requesting_user_id: str = None, limit: int = 10):
+    """Calculate blend of two users and return recommendations without saving to database"""
+    query = text(
+        """
+        SELECT id, taste_vector::text FROM users WHERE id IN (:u1, :u2)
+        """
+    )
+    users = db.execute(query, {"u1": user_1_id, "u2": user_2_id}).fetchall()
+    if len(users) < 2:
+        return None
+    
+    # Parse vector strings like '[1.0,2.0,3.0]' to lists of floats
+    v1_str = users[0][1]  # taste_vector as text
+    v2_str = users[1][1]
+    
+    # Remove brackets and split by comma, then convert to float
+    v1 = [float(x) for x in v1_str.strip('[]').split(',')]
+    v2 = [float(x) for x in v2_str.strip('[]').split(',')]
+
+    # Calculate average of two vectors
+    blend_vector = [(a + b)/2 for a, b in zip(v1, v2)]
+    
+    # Convert back to PostgreSQL vector format
+    blend_vector_str = '[' + ','.join(map(str, blend_vector)) + ']'
+    
+    # Get paintings based on blend vector
+    if requesting_user_id:
+        paintings_query = text(
+            """
+            SELECT p.id, p.title, p.artist, p.image_url, p.style, p.description,
+                   CASE WHEN w.user_id IS NOT NULL THEN true ELSE false END as is_wishlisted
+            FROM paintings p
+            LEFT JOIN wishlists w ON p.id = w.painting_id AND w.user_id = :user_id
+            ORDER BY p.embedding <=> CAST(:vector_str AS vector)
+            LIMIT :limit
+        """
+        )
+        results = db.execute(
+            paintings_query,
+            {"vector_str": blend_vector_str, "limit": limit, "user_id": requesting_user_id}
+        )
+    else:
+        paintings_query = text(
+            """
+            SELECT id, title, artist, image_url, style, description, false as is_wishlisted
+            FROM paintings
+            ORDER BY embedding <=> CAST(:vector_str AS vector)
+            LIMIT :limit
+        """
+        )
+        results = db.execute(
+            paintings_query,
+            {"vector_str": blend_vector_str, "limit": limit}
+        )
+    return [dict(row._mapping) for row in results]
+
 def create_user_blend(db: Session, user_1_id: uuid.UUID, user_2_id: uuid.UUID):
     query = text(
         """
