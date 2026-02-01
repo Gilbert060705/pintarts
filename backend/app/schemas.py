@@ -59,3 +59,4 @@ class TasteProfileResponse(BaseModel):
 class UserListItem(BaseModel):
     username: str
     email: str
+    similarity: Optional[float] = None

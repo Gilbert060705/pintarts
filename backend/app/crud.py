@@ -41,13 +41,46 @@ def get_user_by_credentials(db: Session, username: str, password: str):
         return str(result.id)
     return None
 
-def get_all_users(db: Session):
-    query = text( 
-        """
-        SELECT username, email FROM users
-    """
-    )
-    results = db.execute(query)
+def get_all_users(db: Session, user_id: str = None):
+    if user_id:
+        # Get requesting user's taste vector
+        user_vector_query = text("""
+            SELECT taste_vector::text FROM users WHERE id = :user_id
+        """)
+        user_vector_result = db.execute(user_vector_query, {"user_id": user_id}).fetchone()
+        
+        if not user_vector_result or not user_vector_result[0]:
+            # If user doesn't exist or has no taste vector, return all users without similarity
+            query = text("""
+                SELECT username, email, NULL as similarity FROM users WHERE id != :user_id
+            """)
+            results = db.execute(query, {"user_id": user_id})
+            return [dict(row._mapping) for row in results]
+        
+        user_vector_str = user_vector_result[0]
+        
+        # Get all other users with similarity calculation using cosine similarity
+        query = text("""
+            SELECT 
+                username, 
+                email,
+                CASE 
+                    WHEN taste_vector IS NOT NULL THEN 
+                        ROUND(CAST((1 - (taste_vector <=> CAST(:user_vector AS vector))) * 100 AS numeric), 2)
+                    ELSE NULL 
+                END as similarity
+            FROM users 
+            WHERE id != :user_id
+            ORDER BY similarity DESC NULLS LAST
+        """)
+        results = db.execute(query, {"user_id": user_id, "user_vector": user_vector_str})
+    else:
+        # No user_id provided, return all users without similarity
+        query = text("""
+            SELECT username, email, NULL as similarity FROM users
+        """)
+        results = db.execute(query)
+    
     return [dict(row._mapping) for row in results]
 
 def get_recommmendations_for_user(db: Session, user_id: str, limit: int = 10):
@@ -228,7 +261,7 @@ def toggle_wishlist(db: Session, user_id: str, painting_id: str):
     # Check if painting is already in wishlist
     check_query = text("""
         SELECT 1 FROM wishlists
-        WHERE user_id = :user_id AND painting_id = :painting_id
+        WHERE user_id::text = :user_id AND painting_id::text = :painting_id
     """)
     
     exists = db.execute(check_query, {"user_id": user_id, "painting_id": painting_id}).fetchone()
@@ -237,7 +270,7 @@ def toggle_wishlist(db: Session, user_id: str, painting_id: str):
         # Remove from wishlist
         delete_query = text("""
             DELETE FROM wishlists
-            WHERE user_id = :user_id AND painting_id = :painting_id
+            WHERE user_id::text = :user_id AND painting_id::text = :painting_id
         """)
         db.execute(delete_query, {"user_id": user_id, "painting_id": painting_id})
         db.commit()
@@ -246,7 +279,7 @@ def toggle_wishlist(db: Session, user_id: str, painting_id: str):
         # Add to wishlist
         insert_query = text("""
             INSERT INTO wishlists (user_id, painting_id)
-            VALUES (:user_id, :painting_id)
+            VALUES (CAST(:user_id AS uuid), CAST(:painting_id AS uuid))
         """)
         db.execute(insert_query, {"user_id": user_id, "painting_id": painting_id})
         db.commit()

@@ -1,16 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from ..database import get_db
 from .. import schemas, crud
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/", response_model=List[schemas.UserListItem])
-def get_all_users(db: Session = Depends(get_db)):
-    """Get all users in the system"""
+def get_all_users(
+    user_id: Optional[str] = Query(None, description="User ID to exclude and calculate similarity from"),
+    db: Session = Depends(get_db)
+):
+    """Get all users in the system. If user_id is provided, excludes that user and calculates taste similarity."""
     try:
-        users = crud.get_all_users(db)
+        users = crud.get_all_users(db, user_id)
         return users
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving users: {str(e)}")
