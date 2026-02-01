@@ -52,7 +52,7 @@ def get_all_users(db: Session, user_id: str = None):
         if not user_vector_result or not user_vector_result[0]:
             # If user doesn't exist or has no taste vector, return all users without similarity
             query = text("""
-                SELECT username, email, NULL as similarity FROM users WHERE id != :user_id
+                SELECT id::text as user_id, username, email, NULL as similarity FROM users WHERE id != :user_id
             """)
             results = db.execute(query, {"user_id": user_id})
             return [dict(row._mapping) for row in results]
@@ -62,6 +62,7 @@ def get_all_users(db: Session, user_id: str = None):
         # Get all other users with similarity calculation using cosine similarity
         query = text("""
             SELECT 
+                id::text as user_id,
                 username, 
                 email,
                 CASE 
@@ -77,7 +78,7 @@ def get_all_users(db: Session, user_id: str = None):
     else:
         # No user_id provided, return all users without similarity
         query = text("""
-            SELECT username, email, NULL as similarity FROM users
+            SELECT id::text as user_id, username, email, NULL as similarity FROM users
         """)
         results = db.execute(query)
     

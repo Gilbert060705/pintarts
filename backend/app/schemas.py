@@ -57,6 +57,7 @@ class TasteProfileResponse(BaseModel):
     message: str
 
 class UserListItem(BaseModel):
+    user_id: str
     username: str
     email: str
     similarity: Optional[float] = None
