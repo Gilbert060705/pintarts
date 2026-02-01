@@ -9,21 +9,79 @@ import {
   Platform,
   StyleSheet,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { colors } from '../styles';
+import { authService } from '../api/auth';
+import { userStorage } from '../utils/storage';
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<LoginNavigationProp>();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleContinue = () => {
-    navigation.replace('Onboarding');
+  const handleLogin = async () => {
+    // Clear previous error
+    setError(null);
+
+    // Validate inputs
+    if (!username.trim()) {
+      setError('Please enter your username');
+      return;
+    }
+    if (!password.trim()) {
+      setError('Please enter your password');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await authService.login({
+        username: username.trim(),
+        password: password.trim(),
+      });
+
+      if (response.success) {
+        // Save user ID to storage
+        await userStorage.saveUserId(response.user_id);
+        await userStorage.saveUserData({
+          userId: response.user_id,
+          username: username.trim(),
+        });
+
+        // Navigate to main app
+        navigation.replace('MainApp', { screen: 'Discover' });
+      } else {
+        setError('Login failed. Please try again.');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      
+      // Handle specific error cases
+      if (errorMessage.includes('Invalid username or password')) {
+        setError('Invalid username or password');
+      } else if (errorMessage.includes('Network')) {
+        setError('Unable to connect. Please check your internet connection.');
+      } else {
+        setError(errorMessage);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = () => {
+    // For now, go to onboarding for registration
+    navigation.navigate('Onboarding');
   };
 
   return (
@@ -46,16 +104,28 @@ export default function LoginScreen() {
         {/* Tagline */}
         <Text style={styles.tagline}>Discover art that fits you</Text>
 
-        {/* Email Input */}
+        {/* Error Message */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {/* Username Input */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>Username</Text>
           <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder=""
-            keyboardType="email-address"
+            value={username}
+            onChangeText={(text) => {
+              setUsername(text);
+              setError(null);
+            }}
+            placeholder="Enter your username"
+            placeholderTextColor={colors.gray[400]}
             autoCapitalize="none"
+            autoCorrect={false}
             style={styles.input}
+            editable={!isLoading}
           />
         </View>
 
@@ -64,21 +134,39 @@ export default function LoginScreen() {
           <Text style={styles.label}>Password</Text>
           <TextInput
             value={password}
-            onChangeText={setPassword}
-            placeholder=""
+            onChangeText={(text) => {
+              setPassword(text);
+              setError(null);
+            }}
+            placeholder="Enter your password"
+            placeholderTextColor={colors.gray[400]}
             secureTextEntry
             style={styles.input}
+            editable={!isLoading}
           />
         </View>
 
-        {/* Continue Button */}
+        {/* Login Button */}
         <TouchableOpacity
-          onPress={handleContinue}
+          onPress={handleLogin}
           activeOpacity={0.9}
-          style={styles.button}
+          style={[styles.button, isLoading && styles.buttonDisabled]}
+          disabled={isLoading}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          {isLoading ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
         </TouchableOpacity>
+
+        {/* Sign Up Link */}
+        <View style={styles.signUpContainer}>
+          <Text style={styles.signUpText}>Don't have an account? </Text>
+          <TouchableOpacity onPress={handleSignUp} disabled={isLoading}>
+            <Text style={styles.signUpLink}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -106,7 +194,19 @@ const styles = StyleSheet.create({
     color: colors.gray[500],
     textAlign: 'center',
     fontSize: 14,
-    marginBottom: 48,
+    marginBottom: 32,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(172, 50, 45, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: colors.primary,
+    fontSize: 14,
+    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 16,
@@ -118,6 +218,7 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontSize: 14,
     marginBottom: 8,
+    fontWeight: '500',
   },
   input: {
     borderBottomWidth: 1,
@@ -131,9 +232,28 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: colors.white,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  signUpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  signUpText: {
+    color: colors.gray[500],
+    fontSize: 14,
+  },
+  signUpLink: {
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '500',
   },
