@@ -18,7 +18,7 @@ export interface Artwork {
   artist: string;
   description: string;
   imageUrl: string;
-  category: ArtStyle;
+  category: string; // Can be any style from API
   isWishlisted: boolean;
   aiLabel?: string;
 }
