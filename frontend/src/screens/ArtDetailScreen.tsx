@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles';
+import { wishlistService } from '../api';
+import { userStorage } from '../utils/storage';
 
 type ArtDetailRouteProp = RouteProp<RootStackParamList, 'ArtDetail'>;
 type ArtDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ArtDetail'>;
@@ -23,13 +25,41 @@ export default function ArtDetailScreen() {
   const { artwork } = route.params;
 
   const [isWishlisted, setIsWishlisted] = useState(artwork.isWishlisted);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Load user ID on mount
+  useEffect(() => {
+    const loadUserId = async () => {
+      const id = await userStorage.getUserId();
+      setUserId(id);
+    };
+    loadUserId();
+  }, []);
 
   const handleBack = () => {
     navigation.goBack();
   };
 
-  const toggleWishlist = () => {
-    setIsWishlisted(!isWishlisted);
+  const toggleWishlist = async () => {
+    if (!userId) {
+      console.log('User not logged in');
+      return;
+    }
+
+    // Optimistic update
+    const newState = !isWishlisted;
+    setIsWishlisted(newState);
+
+    try {
+      const response = await wishlistService.toggleWishlist(userId, artwork.id);
+      console.log(response.is_wishlisted ? '✅ Added to wishlist:' : '🗑️ Removed from wishlist:', artwork.title);
+      // Update with actual server state
+      setIsWishlisted(response.is_wishlisted);
+    } catch (err) {
+      console.error('Failed to toggle wishlist:', err);
+      // Revert on error
+      setIsWishlisted(isWishlisted);
+    }
   };
 
   const handleTryNow = () => {

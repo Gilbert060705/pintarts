@@ -136,24 +136,28 @@ export default function DiscoverScreen() {
     }
 
     // Optimistic update - toggle immediately in UI
+    const newWishlistState = !artwork.isWishlisted;
     setArtworks((prev) =>
       prev.map((art) =>
         art.id === artwork.id
-          ? { ...art, isWishlisted: !art.isWishlisted }
+          ? { ...art, isWishlisted: newWishlistState }
           : art
       )
     );
 
     try {
-      if (!artwork.isWishlisted) {
-        // Add to wishlist
-        await wishlistService.addToWishlist(userId, artwork.id);
-        console.log('✅ Added to wishlist:', artwork.title);
-      } else {
-        // Remove from wishlist
-        await wishlistService.removeFromWishlist(userId, artwork.id);
-        console.log('🗑️ Removed from wishlist:', artwork.title);
-      }
+      // Single API call that toggles wishlist state
+      const response = await wishlistService.toggleWishlist(userId, artwork.id);
+      console.log(response.is_wishlisted ? '✅ Added to wishlist:' : '🗑️ Removed from wishlist:', artwork.title);
+      
+      // Update with actual server state (in case it differs)
+      setArtworks((prev) =>
+        prev.map((art) =>
+          art.id === artwork.id
+            ? { ...art, isWishlisted: response.is_wishlisted }
+            : art
+        )
+      );
     } catch (err) {
       console.error('Failed to toggle wishlist:', err);
       // Revert optimistic update on error

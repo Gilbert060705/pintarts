@@ -2,7 +2,7 @@ import { apiRequest, API_ENDPOINTS } from './config';
 import { Painting } from './recommend';
 
 // Types matching backend schemas
-export interface WishlistAddRequest {
+export interface WishlistToggleRequest {
   user_id: string;
   painting_id: string;
 }
@@ -10,15 +10,17 @@ export interface WishlistAddRequest {
 export interface WishlistResponse {
   success: boolean;
   message: string;
+  is_wishlisted: boolean;
 }
 
 // Wishlist Service
 export const wishlistService = {
   /**
-   * Add a painting to user's wishlist
+   * Toggle a painting in user's wishlist (add if not present, remove if present)
    * POST /wishlist/
+   * Returns the new wishlist state (is_wishlisted: true/false)
    */
-  async addToWishlist(userId: string, paintingId: string): Promise<WishlistResponse> {
+  async toggleWishlist(userId: string, paintingId: string): Promise<WishlistResponse> {
     return apiRequest<WishlistResponse>(API_ENDPOINTS.WISHLIST, {
       method: 'POST',
       body: JSON.stringify({
@@ -34,16 +36,5 @@ export const wishlistService = {
    */
   async getWishlist(userId: string): Promise<Painting[]> {
     return apiRequest<Painting[]>(`${API_ENDPOINTS.WISHLIST}?user_id=${userId}`);
-  },
-
-  /**
-   * Remove a painting from user's wishlist
-   * DELETE /wishlist/?user_id={user_id}&painting_id={painting_id}
-   */
-  async removeFromWishlist(userId: string, paintingId: string): Promise<WishlistResponse> {
-    return apiRequest<WishlistResponse>(
-      `${API_ENDPOINTS.WISHLIST}?user_id=${userId}&painting_id=${paintingId}`,
-      { method: 'DELETE' }
-    );
   },
 };
