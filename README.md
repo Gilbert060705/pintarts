@@ -20,7 +20,7 @@
 
 ## 🎨 Overview
 
-PINTUPS is a cross-platform mobile application that revolutionizes how users discover and collect artwork. By analyzing user preferences through AI-powered embeddings (CLIP model), the platform provides intelligent recommendations that evolve with user taste. The system supports social discovery through "taste blending" - allowing users to explore artwork that combines preferences from multiple users.
+PINTARTS is a cross-platform mobile application that revolutionizes how users discover and collect artwork. By analyzing user preferences through AI-powered embeddings (CLIP model), the platform provides intelligent recommendations that evolve with user taste. The system supports social discovery through "taste blending" - allowing users to explore artwork that combines preferences from multiple users.
 
 ### Project Goals
 - **Personalized Discovery**: Use AI to understand and match user art preferences
