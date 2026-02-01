@@ -13,7 +13,7 @@ from recsys.utils import get_text_embedding
 # 100+ Famous paintings across different styles
 PAINTINGS = [
     # Abstract
-    {"title": "Composition VIII", "artist": "Wassily Kandinsky", "style": "abstract", "image_url": "https://www.guggenheim.org/wp-content/uploads/1923/01/37.262_ph_web-1.jpg", "description": "Vibrant abstract composition featuring geometric shapes including circles, triangles, and lines in bold primary colors of red, yellow, blue, and black against a light beige background with dynamic angular forms and intersecting planes"},
+    {"title": "Composition VIII", "artist": "Wassily Kandinsky", "style": "abstract", "image_url": "    ", "description": "Vibrant abstract composition featuring geometric shapes including circles, triangles, and lines in bold primary colors of red, yellow, blue, and black against a light beige background with dynamic angular forms and intersecting planes"},
     {"title": "Broadway Boogie Woogie", "artist": "Piet Mondrian", "style": "abstract", "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/30/Piet_Mondrian%2C_1942_-_Broadway_Boogie_Woogie.jpg", "description": "Geometric grid pattern with bright yellow, red, and blue rectangular blocks creating a rhythmic visual pattern resembling city streets from above, featuring a white background with colorful squares arranged in a syncopated grid"},
     {"title": "No. 5, 1948", "artist": "Jackson Pollock", "style": "abstract", "image_url": "https://www.jackson-pollock.org/assets/img/paintings/number-5.jpg", "description": "Chaotic abstract expressionist drip painting with dense layers of brown, yellow, gray, and white paint splattered across the canvas creating an intricate web-like texture with no recognizable forms"},
     {"title": "Black Square", "artist": "Kazimir Malevich", "style": "abstract", "image_url": "https://d7hftxdivxxvm.cloudfront.net/?height=632&quality=80&resize_to=fit&src=https%3A%2F%2Fd32dm0rphc51dk.cloudfront.net%2FAVjxLlGSYPD9AAuno1tjmw%2Flarge.jpg&width=640", "description": "Minimalist suprematist painting featuring a solid black square centered on a white background representing pure geometric abstraction and the elimination of representational art"},
@@ -174,8 +174,8 @@ def populate_database():
         
         # Insert paintings with embeddings
         insert_query = text("""
-            INSERT INTO paintings (title, artist, image_url, style, embedding)
-            VALUES (:title, :artist, :image_url, :style, :embedding)
+            INSERT INTO paintings (title, artist, image_url, style, description, embedding)
+            VALUES (:title, :artist, :image_url, :style, :description, :embedding)
         """)
         
         success_count = 0
@@ -192,6 +192,7 @@ def populate_database():
                     "artist": painting["artist"],
                     "image_url": painting["image_url"],
                     "style": painting["style"],
+                    "description": painting["description"],
                     "embedding": embedding
                 })
                 

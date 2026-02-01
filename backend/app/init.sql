@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS paintings (
     artist VARCHAR(255),
     image_url TEXT NOT NULL,
     style VARCHAR(100),
+    description TEXT,
     embedding vector(512),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

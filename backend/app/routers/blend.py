@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from ..database import get_db
 from .. import schemas, crud
 import uuid
@@ -15,8 +15,12 @@ def get_user_blends(user_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"message": "Blends retrieved successfully", "blends": blends}
 
 @router.get("/{blend_id}/paintings", response_model=List[schemas.PaintingResponse])
-def get_blend_recommendations(blend_id: uuid.UUID, db: Session = Depends(get_db)):
-    paintings = crud.get_blend_recommendations(db, blend_id)
+def get_blend_recommendations(
+    blend_id: uuid.UUID,
+    user_id: Optional[str] = Query(None, description="User ID to check wishlist status"),
+    db: Session = Depends(get_db)
+):
+    paintings = crud.get_blend_recommendations(db, blend_id, user_id)
     if not paintings:
         raise HTTPException(status_code=404, detail="Blend not found or no recommendations available")
     return paintings

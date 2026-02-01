@@ -33,6 +33,8 @@ class PaintingResponse(BaseModel):
     artist: Optional[str] = None
     image_url: str
     style: Optional[str] = None
+    description: Optional[str] = None
+    is_wishlisted: bool = False
 
     class Config:
         from_attributes = True
@@ -44,3 +46,15 @@ class WishlistAdd(BaseModel):
 class WishlistResponse(BaseModel):
     success: bool
     message: str
+
+class TasteProfileUpdate(BaseModel):
+    preferences: List[str]
+
+class TasteProfileResponse(BaseModel):
+    success: bool
+    user_id: str
+    message: str
+
+class UserListItem(BaseModel):
+    username: str
+    email: str

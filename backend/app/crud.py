@@ -41,7 +41,7 @@ def get_user_by_credentials(db: Session, username: str, password: str):
         return str(result.id)
     return None
 
-def get_eligible_users(db: Session):
+def get_all_users(db: Session):
     query = text( 
         """
         SELECT username, email FROM users
@@ -68,20 +68,22 @@ def get_recommmendations_for_user(db: Session, user_id: str, limit: int = 10):
     vector_str = user_result[0]
 
     recommendation_query = text("""
-        SELECT id, title, artist, image_url, style
-        FROM paintings
-        ORDER BY embedding <=> CAST(:vector_str AS vector)
+        SELECT p.id, p.title, p.artist, p.image_url, p.style, p.description,
+               CASE WHEN w.user_id IS NOT NULL THEN true ELSE false END as is_wishlisted
+        FROM paintings p
+        LEFT JOIN wishlists w ON p.id = w.painting_id AND w.user_id = :user_id
+        ORDER BY p.embedding <=> CAST(:vector_str AS vector)
         LIMIT :limit
     """)
     
     results = db.execute(
         recommendation_query,
-        {"vector_str": vector_str, "limit": limit}
+        {"vector_str": vector_str, "limit": limit, "user_id": user_id}
     )
 
     return [dict(row._mapping) for row in results]
 
-def search_paintings_by_description(db: Session, search_query: str, limit: int = 10):
+def search_paintings_by_description(db: Session, search_query: str, user_id: str = None, limit: int = 10):
     query_vector = get_text_embedding(search_query)
     
     # Flatten vector if it's nested and convert to list
@@ -96,17 +98,30 @@ def search_paintings_by_description(db: Session, search_query: str, limit: int =
     # Convert vector to string format for PostgreSQL
     vector_str = '[' + ','.join(map(str, query_vector)) + ']'
     
-    query = text("""
-    SELECT id, title, artist, image_url, style
-                 FROM paintings
-                 ORDER BY embedding <=> CAST(:vector_str AS vector)
-                 LIMIT :limit
-                 """)
-    
-    results = db.execute(
-        query, 
-        {"vector_str": vector_str, "limit": limit}
-    )
+    if user_id:
+        query = text("""
+        SELECT p.id, p.title, p.artist, p.image_url, p.style, p.description,
+               CASE WHEN w.user_id IS NOT NULL THEN true ELSE false END as is_wishlisted
+        FROM paintings p
+        LEFT JOIN wishlists w ON p.id = w.painting_id AND w.user_id = :user_id
+        ORDER BY p.embedding <=> CAST(:vector_str AS vector)
+        LIMIT :limit
+        """)
+        results = db.execute(
+            query, 
+            {"vector_str": vector_str, "limit": limit, "user_id": user_id}
+        )
+    else:
+        query = text("""
+        SELECT id, title, artist, image_url, style, description, false as is_wishlisted
+        FROM paintings
+        ORDER BY embedding <=> CAST(:vector_str AS vector)
+        LIMIT :limit
+        """)
+        results = db.execute(
+            query, 
+            {"vector_str": vector_str, "limit": limit}
+        )
 
     return [dict(row._mapping) for row in results]
 
@@ -162,7 +177,7 @@ def get_blends(db: Session, user_id: uuid.UUID):
     results = db.execute(query, {"uid": user_id})
     return [dict(row._mapping) for row in results]
 
-def get_blend_recommendations(db: Session, blend_id: uuid.UUID, limit: int = 10):
+def get_blend_recommendations(db: Session, blend_id: uuid.UUID, user_id: str = None, limit: int = 10):
 
     query = text(
         """
@@ -178,18 +193,34 @@ def get_blend_recommendations(db: Session, blend_id: uuid.UUID, limit: int = 10)
     # Get the vector string directly
     vector_str = blend_result[0]
     
-    query = text(
+    if user_id:
+        query = text(
+            """
+            SELECT p.id, p.title, p.artist, p.image_url, p.style, p.description,
+                   CASE WHEN w.user_id IS NOT NULL THEN true ELSE false END as is_wishlisted
+            FROM paintings p
+            LEFT JOIN wishlists w ON p.id = w.painting_id AND w.user_id = :user_id
+            ORDER BY p.embedding <=> CAST(:vector_str AS vector)
+            LIMIT :limit
         """
-        SELECT id, title, artist, image_url, style
-        FROM paintings
-        ORDER BY embedding <=> CAST(:vector_str AS vector)
-        LIMIT :limit
-    """
-    )
-    results = db.execute(
-        query,
-        {"vector_str": vector_str, "limit": limit}
-    )
+        )
+        results = db.execute(
+            query,
+            {"vector_str": vector_str, "limit": limit, "user_id": user_id}
+        )
+    else:
+        query = text(
+            """
+            SELECT id, title, artist, image_url, style, description, false as is_wishlisted
+            FROM paintings
+            ORDER BY embedding <=> CAST(:vector_str AS vector)
+            LIMIT :limit
+        """
+        )
+        results = db.execute(
+            query,
+            {"vector_str": vector_str, "limit": limit}
+        )
     return [dict(row._mapping) for row in results]
 
 def add_to_wishlist(db: Session, user_id: str, painting_id: str):
@@ -207,11 +238,44 @@ def add_to_wishlist(db: Session, user_id: str, painting_id: str):
 def get_user_wishlist(db: Session, user_id: str):
     """Get all paintings in user's wishlist"""
     query = text("""
-        SELECT p.id, p.title, p.artist, p.image_url, p.style
+        SELECT p.id, p.title, p.artist, p.image_url, p.style, p.description, true as is_wishlisted
         FROM wishlists w
         JOIN paintings p ON w.painting_id = p.id
         WHERE w.user_id = :user_id
     """)
     
     results = db.execute(query, {"user_id": user_id})
-    return [dict(row._mapping) for row in results]  
+    return [dict(row._mapping) for row in results]
+
+def update_user_taste_profile(db: Session, user_id: str, preferences: List[str]):
+    """Update user's taste vector based on new preferences"""
+    # Check if user exists
+    check_query = text("""
+        SELECT id FROM users WHERE id = :user_id
+    """)
+    user_exists = db.execute(check_query, {"user_id": user_id}).fetchone()
+    
+    if not user_exists:
+        return None
+    
+    # Generate new taste vector from preferences
+    new_taste_vector = generate_initial_taste_vector(preferences)
+    
+    # Convert vector to PostgreSQL format
+    vector_str = '[' + ','.join(map(str, new_taste_vector)) + ']'
+    
+    # Update the user's taste vector
+    update_query = text("""
+        UPDATE users
+        SET taste_vector = CAST(:taste_vector AS vector)
+        WHERE id = :user_id
+        RETURNING id
+    """)
+    
+    result = db.execute(
+        update_query,
+        {"user_id": user_id, "taste_vector": vector_str}
+    )
+    db.commit()
+    
+    return result.fetchone()  
