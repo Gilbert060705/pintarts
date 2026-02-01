@@ -6,7 +6,7 @@ from .. import schemas, crud
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
-@router.get("/", response_model=List[schemas.UserListItem])
+@router.get("", response_model=List[schemas.UserListItem])
 def get_all_users(
     user_id: Optional[str] = Query(None, description="User ID to exclude and calculate similarity from"),
     db: Session = Depends(get_db)
@@ -18,7 +18,7 @@ def get_all_users(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving users: {str(e)}")
 
-@router.post("/", response_model=schemas.UserResponse)
+@router.post("", response_model=schemas.UserResponse)
 def onboard_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     try:
         result = crud.create_user(db=db, user=user)

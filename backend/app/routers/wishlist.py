@@ -6,7 +6,7 @@ from .. import schemas, crud
 
 router = APIRouter(prefix="/wishlist", tags=["Wishlist"])
 
-@router.post("/", response_model=schemas.WishlistResponse)
+@router.post("", response_model=schemas.WishlistResponse)
 def toggle_wishlist(wishlist: schemas.WishlistAdd, db: Session = Depends(get_db)):
     """Toggle a painting in user's wishlist - adds if not present, removes if present"""
     try:
@@ -20,7 +20,7 @@ def toggle_wishlist(wishlist: schemas.WishlistAdd, db: Session = Depends(get_db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/", response_model=List[schemas.PaintingResponse])
+@router.get("", response_model=List[schemas.PaintingResponse])
 def get_wishlist(user_id: str = Query(..., description="User ID"), db: Session = Depends(get_db)):
     """Get all paintings in user's wishlist"""
     try:

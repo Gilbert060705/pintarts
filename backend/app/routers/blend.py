@@ -25,7 +25,7 @@ def get_blend_recommendations(
         raise HTTPException(status_code=404, detail="Blend not found or no recommendations available")
     return paintings
 
-@router.post("/")
+@router.post("", response_model=List[schemas.PaintingResponse])
 def create_blend(user_1_id: uuid.UUID, user_2_id: uuid.UUID, db: Session = Depends(get_db)):
     blend_id = crud.create_user_blend(db, user_1_id, user_2_id)
     if blend_id is None:
