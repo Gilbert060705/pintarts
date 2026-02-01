@@ -223,30 +223,34 @@ def get_blend_recommendations(db: Session, blend_id: uuid.UUID, user_id: str = N
         )
     return [dict(row._mapping) for row in results]
 
-def add_to_wishlist(db: Session, user_id: str, painting_id: str):
-    """Add a painting to user's wishlist"""
-    query = text("""
-        INSERT INTO wishlists (user_id, painting_id)
-        VALUES (:user_id, :painting_id)
-        ON CONFLICT DO NOTHING
-    """)
-    
-    db.execute(query, {"user_id": user_id, "painting_id": painting_id})
-    db.commit()
-    return True
-
-def remove_from_wishlist(db: Session, user_id: str, painting_id: str):
-    """Remove a painting from user's wishlist"""
-    query = text("""
-        DELETE FROM wishlists
+def toggle_wishlist(db: Session, user_id: str, painting_id: str):
+    """Toggle a painting in user's wishlist - add if not present, remove if present"""
+    # Check if painting is already in wishlist
+    check_query = text("""
+        SELECT 1 FROM wishlists
         WHERE user_id = :user_id AND painting_id = :painting_id
     """)
     
-    result = db.execute(query, {"user_id": user_id, "painting_id": painting_id})
-    db.commit()
+    exists = db.execute(check_query, {"user_id": user_id, "painting_id": painting_id}).fetchone()
     
-    # Return True if a row was deleted, False otherwise
-    return result.rowcount > 0
+    if exists:
+        # Remove from wishlist
+        delete_query = text("""
+            DELETE FROM wishlists
+            WHERE user_id = :user_id AND painting_id = :painting_id
+        """)
+        db.execute(delete_query, {"user_id": user_id, "painting_id": painting_id})
+        db.commit()
+        return False  # Now not in wishlist
+    else:
+        # Add to wishlist
+        insert_query = text("""
+            INSERT INTO wishlists (user_id, painting_id)
+            VALUES (:user_id, :painting_id)
+        """)
+        db.execute(insert_query, {"user_id": user_id, "painting_id": painting_id})
+        db.commit()
+        return True  # Now in wishlist
 
 def get_user_wishlist(db: Session, user_id: str):
     """Get all paintings in user's wishlist"""

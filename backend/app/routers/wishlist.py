@@ -7,13 +7,15 @@ from .. import schemas, crud
 router = APIRouter(prefix="/wishlist", tags=["Wishlist"])
 
 @router.post("/", response_model=schemas.WishlistResponse)
-def add_to_wishlist(wishlist: schemas.WishlistAdd, db: Session = Depends(get_db)):
-    """Add a painting to user's wishlist"""
+def toggle_wishlist(wishlist: schemas.WishlistAdd, db: Session = Depends(get_db)):
+    """Toggle a painting in user's wishlist - adds if not present, removes if present"""
     try:
-        crud.add_to_wishlist(db, wishlist.user_id, wishlist.painting_id)
+        is_wishlisted = crud.toggle_wishlist(db, wishlist.user_id, wishlist.painting_id)
+        message = "Painting added to wishlist" if is_wishlisted else "Painting removed from wishlist"
         return schemas.WishlistResponse(
             success=True,
-            message="Painting added to wishlist"
+            message=message,
+            is_wishlisted=is_wishlisted
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -24,21 +26,5 @@ def get_wishlist(user_id: str = Query(..., description="User ID"), db: Session =
     try:
         paintings = crud.get_user_wishlist(db, user_id)
         return paintings
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.delete("/", response_model=schemas.WishlistResponse)
-def remove_from_wishlist(wishlist: schemas.WishlistAdd, db: Session = Depends(get_db)):
-    """Remove a painting from user's wishlist"""
-    try:
-        removed = crud.remove_from_wishlist(db, wishlist.user_id, wishlist.painting_id)
-        if not removed:
-            raise HTTPException(status_code=404, detail="Painting not found in wishlist")
-        return schemas.WishlistResponse(
-            success=True,
-            message="Painting removed from wishlist"
-        )
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

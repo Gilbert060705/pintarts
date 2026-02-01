@@ -46,6 +46,7 @@ class WishlistAdd(BaseModel):
 class WishlistResponse(BaseModel):
     success: bool
     message: str
+    is_wishlisted: bool
 
 class TasteProfileUpdate(BaseModel):
     preferences: List[str]
