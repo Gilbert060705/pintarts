@@ -32,9 +32,9 @@ export const wishlistService = {
 
   /**
    * Get all paintings in user's wishlist
-   * GET /wishlist/?user_id={user_id}
+   * GET /wishlist?user_id={user_id}
    */
   async getWishlist(userId: string): Promise<Painting[]> {
-    return apiRequest<Painting[]>(`${API_ENDPOINTS.WISHLIST}?user_id=${userId}`);
+    return apiRequest<Painting[]>(`/wishlist?user_id=${userId}`);
   },
 };
