@@ -7,6 +7,7 @@ import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import ArtDetailScreen from '../screens/ArtDetailScreen';
+import ARPreviewScreen from '../screens/ARPreviewScreen';
 
 // Navigators
 import MainTabNavigator from './MainTabNavigator';
@@ -34,6 +35,15 @@ export default function RootNavigator() {
         options={{
           gestureEnabled: true,
           animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="ARPreview"
+        component={ARPreviewScreen}
+        options={{
+          gestureEnabled: false,
+          animation: 'fade',
+          contentStyle: { backgroundColor: '#000000' },
         }}
       />
     </Stack.Navigator>

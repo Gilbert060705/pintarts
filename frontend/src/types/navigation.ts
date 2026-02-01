@@ -30,6 +30,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   MainApp: NavigatorScreenParams<MainTabParamList>;
   ArtDetail: { artwork: Artwork };
+  ARPreview: { artwork: Artwork };
 };
 
 // Bottom Tab Navigator types

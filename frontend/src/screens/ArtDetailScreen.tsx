@@ -33,7 +33,7 @@ export default function ArtDetailScreen() {
   };
 
   const handleTryNow = () => {
-    console.log('Try AR preview');
+    navigation.navigate('ARPreview', { artwork });
   };
 
   return (
