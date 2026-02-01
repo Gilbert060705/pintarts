@@ -12,7 +12,6 @@
 - [Architecture](#architecture)
   - [Backend Architecture](#backend-architecture)
   - [Frontend Architecture](#frontend-architecture)
-- [Data Model](#data-model)
 - [Core Features Explained](#core-features-explained)
 - [Setup Instructions](#setup-instructions)
 - [API Documentation](#api-documentation)
